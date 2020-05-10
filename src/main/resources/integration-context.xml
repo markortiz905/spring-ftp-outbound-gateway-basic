@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-ftp="http://www.springframework.org/schema/integration/ftp"
+	xmlns:int-file="http://www.springframework.org/schema/integration/file"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/integration/file http://www.springframework.org/schema/integration/file/spring-integration-file-5.2.xsd
+		http://www.springframework.org/schema/integration/ftp http://www.springframework.org/schema/integration/ftp/spring-integration-ftp-5.2.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-5.2.xsd">
+
+	<int:gateway service-interface="com.pinoyjavatech.sample.OutFileGateway">
+		<int:method name="write" request-channel="ftpChannel" payload-expression="#args[1]">
+			<int:header name="fileName" expression="#args[0]"/>
+		</int:method>
+		<int:method name="read" request-channel="ftpGatewayChannel">
+		</int:method>
+	</int:gateway>
+	
+	<int:channel id="ftpGatewayChannel" />
+<!-- optionals -->
+<!-- 	<bean id="customGatewayTransformer" class="com.pinoyjavatech.sample.CustomGatewayTransformer"/> -->
+<!-- 	<int:transformer ref="customGatewayTransformer" method="handleMessage" input-channel="ftpGatewayChannel" output-channel="strToFileChannel"/> -->
+
+	<int:channel id="strToFileChannel" />
+	
+	<bean id="ftpClientFactory" class="org.springframework.integration.ftp.session.DefaultFtpSessionFactory">
+		<property name="host" value="localhost" />
+		<property name="port" value="21" />
+		<property name="username" value="mark" />
+		<property name="password" value="password" />
+		<property name="clientMode" value="0"/>
+	    <property name="fileType" value="2"/>
+	    <property name="bufferSize" value="100000"/>
+	</bean>
+	
+	<int:channel id="ftpChannel" />
+	
+	<int-ftp:outbound-gateway 
+		session-factory="ftpClientFactory"
+		command="get"
+		expression="payload"
+		request-channel="ftpGatewayChannel"
+		local-directory="src/test/write"
+		reply-channel="outboundChannel">
+	</int-ftp:outbound-gateway>
+	
+	<int:channel id="outboundChannel" />
+	
+	<int:channel id="printChannel" />
+	
+	<bean id="filePrinter" class="com.pinoyjavatech.sample.FilePrinter" />
+	
+	<int:service-activator ref="filePrinter" input-channel="outboundChannel" method="printFile" />
+	
+	
+</beans>
